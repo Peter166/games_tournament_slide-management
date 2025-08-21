@@ -146,7 +146,18 @@ async function loadAvailablePictures() {
     if (response.ok) {
       const data = await response.json();
       console.log(`Found ${data.count} pictures via API`);
-      return data.pictures;
+      
+      // Check for custom slide
+      const customSlideData = await fetchCustomSlide();
+      let allSlides = [];
+      
+      if (customSlideData && hasCustomSlideContent(customSlideData)) {
+        allSlides.push('CUSTOM_SLIDE');
+        console.log('Added custom slide as first slide');
+      }
+      
+      allSlides = allSlides.concat(data.pictures);
+      return allSlides;
     }
   } catch (error) {
     console.log('API not available, using fallback method');
@@ -166,17 +177,104 @@ async function loadAvailablePictures() {
   return availablePictures;
 }
 
+async function fetchCustomSlide() {
+  try {
+    const response = await fetch('/api/custom-slide');
+    if (response.ok) {
+      const data = await response.json();
+      return data;
+    }
+  } catch (error) {
+    console.log('Error fetching custom slide:', error);
+  }
+  return null;
+}
+
+function hasCustomSlideContent(slideData) {
+  if (!slideData) return false;
+  
+  // Check if there are text elements or a background image
+  const hasElements = slideData.elements && slideData.elements.length > 0;
+  const hasBackgroundImage = slideData.backgroundImage && slideData.backgroundImage !== null;
+  const hasCustomBackground = slideData.backgroundColor && slideData.backgroundColor !== '#f9f9f9';
+  
+  return hasElements || hasBackgroundImage || hasCustomBackground;
+}
+
 function createSlide(imagePath, index) {
   const slide = document.createElement('div');
   slide.className = 'slide';
   slide.id = `slide${index}`;
   
-  slide.innerHTML = `
-    <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
-      <img src="${imagePath}" alt="Slide Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;">
-    </div>
-  `;
+  if (imagePath === 'CUSTOM_SLIDE') {
+    // Create custom slide
+    slide.innerHTML = '<div id="custom-slide-content" style="width: 100%; height: 100%; position: relative;"></div>';
+    // The content will be populated later when the slide becomes active
+  } else {
+    slide.innerHTML = `
+      <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+        <img src="${imagePath}" alt="Slide Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;">
+      </div>
+    `;
+  }
   return slide;
+}
+
+async function populateCustomSlide() {
+  const customSlideContent = document.getElementById('custom-slide-content');
+  if (!customSlideContent) return;
+  
+  try {
+    const slideData = await fetchCustomSlide();
+    if (!slideData) return;
+    
+    // Set background color
+    if (slideData.backgroundColor) {
+      customSlideContent.style.backgroundColor = slideData.backgroundColor;
+    }
+    
+    // Set background image
+    if (slideData.backgroundImage) {
+      customSlideContent.style.backgroundImage = `url(${slideData.backgroundImage})`;
+      customSlideContent.style.backgroundSize = 'cover';
+      customSlideContent.style.backgroundPosition = 'center';
+      customSlideContent.style.backgroundRepeat = 'no-repeat';
+    } else {
+      customSlideContent.style.backgroundImage = '';
+    }
+    
+    // Clear existing content
+    customSlideContent.innerHTML = '';
+    
+    // Add text elements
+    if (slideData.elements) {
+      slideData.elements.forEach(elemData => {
+        const textElement = document.createElement('div');
+        textElement.style.position = 'absolute';
+        textElement.style.fontFamily = 'Arial, sans-serif';
+        textElement.textContent = elemData.text;
+        
+        // Apply styles
+        if (elemData.left) textElement.style.left = elemData.left;
+        if (elemData.top) textElement.style.top = elemData.top;
+        if (elemData.width) textElement.style.width = elemData.width;
+        if (elemData.height) textElement.style.height = elemData.height;
+        if (elemData.fontSize) textElement.style.fontSize = elemData.fontSize;
+        if (elemData.color) textElement.style.color = elemData.color;
+        if (elemData.backgroundColor) textElement.style.backgroundColor = elemData.backgroundColor;
+        
+        textElement.style.display = 'flex';
+        textElement.style.alignItems = 'center';
+        textElement.style.justifyContent = 'center';
+        textElement.style.textAlign = 'center';
+        textElement.style.borderRadius = '4px';
+        
+        customSlideContent.appendChild(textElement);
+      });
+    }
+  } catch (error) {
+    console.error('Error populating custom slide:', error);
+  }
 }
 
 function createWebSlide(url, index) {
@@ -243,6 +341,11 @@ function showSlide(index) {
     if (i === index) {
       slide.classList.add('active');
       console.log(`Activated slide ${i}:`, slide.id);
+      
+      // If this is the custom slide, populate it
+      if (slide.querySelector('#custom-slide-content')) {
+        populateCustomSlide();
+      }
     } else {
       slide.classList.remove('active');
     }

@@ -172,6 +172,166 @@
     color: #721c24;
   }
   
+  /* Custom Slide Editor Styles */
+  .slide-editor {
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    margin-top: 20px;
+  }
+  
+  .slide-editor-canvas {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #ccc;
+    position: relative;
+    background: #000;
+    cursor: crosshair;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  .text-element {
+    position: absolute;
+    padding: 8px;
+    border: 2px dashed transparent;
+    cursor: move;
+    user-select: none;
+    min-width: 100px;
+    min-height: 30px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  .text-element.editing {
+    background: rgba(255, 255, 255, 0.95);
+    outline: none;
+    resize: both;
+  }
+  
+  .text-element.no-background {
+    background: transparent !important;
+  }
+  
+  .text-element.selected {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+  }
+  
+  .text-element .resize-handle {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    width: 10px;
+    height: 10px;
+    background: #667eea;
+    cursor: se-resize;
+    border-radius: 50%;
+    display: none;
+  }
+  
+  .text-element.selected .resize-handle {
+    display: block;
+  }
+  
+  .editor-tools {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .tool-group {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    margin-right: 20px;
+  }
+  
+  .tool-group label {
+    font-weight: 500;
+    margin-right: 5px;
+    font-size: 14px;
+  }
+  
+  .editor-input {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+  
+  .editor-btn {
+    padding: 8px 15px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s;
+  }
+  
+  .editor-btn:hover {
+    background: #5a6fd8;
+  }
+  
+  .editor-btn.secondary {
+    background: #6c757d;
+  }
+  
+  .editor-btn.secondary:hover {
+    background: #5a6268;
+  }
+  
+  .editor-btn.danger {
+    background: #e74c3c;
+  }
+  
+  .editor-btn.danger:hover {
+    background: #c0392b;
+  }
+  
+  .slide-preview {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+  
+  .slide-preview h4 {
+    margin-bottom: 10px;
+    color: #2c3e50;
+  }
+  
+  .preview-canvas {
+    width: 100%;
+    height: 200px;
+    border: 1px solid #ddd;
+    background: white;
+    position: relative;
+    overflow: hidden;
+    transform: scale(0.5);
+    transform-origin: top left;
+  }
+  
+  .preview-canvas .text-element {
+    border: none;
+    background: transparent;
+    pointer-events: none;
+  }
+  
   .current-settings {
     background: #e8f4fd;
     padding: 15px;
@@ -248,6 +408,68 @@
       <div class="status-message" id="countdown-status"></div>
     </div>
     
+    <!-- Custom Slide Editor Section -->
+    <div class="section">
+      <h2>🎨 Custom First Slide Editor</h2>
+      <p style="margin-bottom: 20px; color: #666;">Create a custom slide that will appear first in the slideshow, before any uploaded pictures.</p>
+      
+      <div class="slide-editor">
+        <div class="editor-tools">
+          <div class="tool-group">
+            <button class="editor-btn" onclick="addTextElement()">+ Add Text</button>
+          </div>
+          
+          <div class="tool-group">
+            <label>Font Size:</label>
+            <input type="number" id="font-size" class="editor-input" value="24" min="12" max="100" style="width: 60px;">
+          </div>
+          
+          <div class="tool-group">
+            <label>Text Color:</label>
+            <input type="color" id="text-color" class="editor-input" value="#000000">
+          </div>
+          
+          <div class="tool-group">
+            <label>Text BG:</label>
+            <input type="color" id="bg-color" class="editor-input" value="#ffffff">
+            <label style="margin-left: 10px;">
+              <input type="checkbox" id="no-background" style="margin-right: 5px;">
+              No BG
+            </label>
+          </div>
+          
+          <div class="tool-group">
+            <label>Canvas BG:</label>
+            <input type="color" id="canvas-bg-color" class="editor-input" value="#000000">
+          </div>
+          
+          <div class="tool-group">
+            <label>BG Image:</label>
+            <input type="file" id="bg-image-input" class="editor-input" accept="image/*" style="width: 120px;">
+            <button class="editor-btn secondary" onclick="removeBgImage()">Remove</button>
+          </div>
+          
+          <div class="tool-group">
+            <button class="editor-btn secondary" onclick="clearCanvas()">Clear All</button>
+            <button class="editor-btn" onclick="saveCustomSlide()">Save Slide</button>
+          </div>
+        </div>
+        
+        <div class="slide-editor-canvas" id="slide-canvas" onclick="handleCanvasClick(event)">
+          <!-- Text elements will be added here dynamically -->
+        </div>
+      </div>
+      
+      <div class="slide-preview">
+        <h4>Preview (50% scale):</h4>
+        <div class="preview-canvas" id="preview-canvas">
+          <!-- Preview content -->
+        </div>
+      </div>
+      
+      <div class="status-message" id="slide-status"></div>
+    </div>
+    
     <!-- Picture Upload Section -->
     <div class="section">
       <h2>🖼️ Picture Management</h2>
@@ -279,6 +501,7 @@ let currentMode = 'time'; // 'time' or 'duration'
 document.addEventListener('DOMContentLoaded', function() {
   loadCurrentSettings();
   loadCurrentPictures();
+  loadCustomSlide();
   setupEventListeners();
 });
 
@@ -526,6 +749,516 @@ function showStatus(elementId, message, type) {
     statusElement.style.display = 'none';
   }, 5000);
 }
+
+// Custom Slide Editor Functions
+let selectedElement = null;
+let isDragging = false;
+let isResizing = false;
+let dragOffset = { x: 0, y: 0 };
+let elementCounter = 0;
+let currentBackgroundImage = null;
+
+function handleCanvasClick(event) {
+  if (event.target.id === 'slide-canvas') {
+    // Clear selection when clicking on empty canvas
+    clearSelection();
+  }
+}
+
+function addTextElement() {
+  const canvas = document.getElementById('slide-canvas');
+  const fontSize = document.getElementById('font-size').value;
+  const textColor = document.getElementById('text-color').value;
+  const bgColor = document.getElementById('bg-color').value;
+  const noBackground = document.getElementById('no-background').checked;
+  
+  const textElement = document.createElement('div');
+  textElement.className = 'text-element';
+  textElement.id = `text-${++elementCounter}`;
+  textElement.contentEditable = true;
+  textElement.innerText = 'Double-click to edit';
+  textElement.style.fontSize = fontSize + 'px';
+  textElement.style.color = textColor;
+  
+  // Handle background
+  if (noBackground) {
+    textElement.classList.add('no-background');
+    textElement.style.backgroundColor = 'transparent';
+  } else {
+    textElement.style.backgroundColor = bgColor;
+  }
+  
+  // Calculate position relative to canvas size (using percentages for proper scaling)
+  const canvasRect = canvas.getBoundingClientRect();
+  textElement.style.left = '5%';
+  textElement.style.top = '5%';
+  textElement.style.maxWidth = '90%';
+  
+  // Add resize handle
+  const resizeHandle = document.createElement('div');
+  resizeHandle.className = 'resize-handle';
+  textElement.appendChild(resizeHandle);
+  
+  // Add event listeners
+  textElement.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectElement(textElement);
+  });
+  
+  textElement.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    enterEditMode(textElement);
+  });
+  
+  textElement.addEventListener('keydown', handleTextKeyDown);
+  textElement.addEventListener('blur', exitEditMode);
+  textElement.addEventListener('mousedown', startDrag);
+  resizeHandle.addEventListener('mousedown', startResize);
+  
+  canvas.appendChild(textElement);
+  selectElement(textElement);
+  updatePreview();
+}
+
+function selectElement(element) {
+  clearSelection();
+  selectedElement = element;
+  element.classList.add('selected');
+  
+  // Update form fields with selected element properties
+  const fontSize = parseInt(element.style.fontSize) || 24;
+  const textColor = rgbToHex(element.style.color) || '#000000';
+  const bgColor = rgbToHex(element.style.backgroundColor) || '#ffffff';
+  const hasNoBackground = element.classList.contains('no-background');
+  
+  document.getElementById('font-size').value = fontSize;
+  document.getElementById('text-color').value = textColor;
+  document.getElementById('bg-color').value = bgColor;
+  document.getElementById('no-background').checked = hasNoBackground;
+}
+
+function enterEditMode(element) {
+  element.classList.add('editing');
+  element.focus();
+  
+  // Select all text for easy editing
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  const selection = window.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function exitEditMode(element) {
+  element.classList.remove('editing');
+  updatePreview();
+}
+
+function handleTextKeyDown(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    
+    // Insert a line break
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+    
+    const br = document.createElement('br');
+    range.deleteContents();
+    range.insertNode(br);
+    
+    // Move cursor after the line break
+    range.setStartAfter(br);
+    range.setEndAfter(br);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Auto-resize the text element if needed
+    const element = e.target;
+    const minHeight = parseInt(element.style.minHeight) || 30;
+    if (element.scrollHeight > element.offsetHeight) {
+      element.style.height = Math.max(minHeight, element.scrollHeight + 10) + 'px';
+    }
+    
+    updatePreview();
+  }
+}
+
+function clearSelection() {
+  if (selectedElement) {
+    selectedElement.classList.remove('selected');
+    selectedElement = null;
+  }
+}
+
+function startDrag(e) {
+  if (e.target.className === 'resize-handle') return;
+  
+  isDragging = true;
+  const rect = e.target.getBoundingClientRect();
+  const canvasRect = document.getElementById('slide-canvas').getBoundingClientRect();
+  
+  dragOffset.x = e.clientX - rect.left;
+  dragOffset.y = e.clientY - rect.top;
+  
+  e.preventDefault();
+  
+  document.addEventListener('mousemove', doDrag);
+  document.addEventListener('mouseup', stopDrag);
+}
+
+function doDrag(e) {
+  if (!isDragging || !selectedElement) return;
+  
+  const canvasRect = document.getElementById('slide-canvas').getBoundingClientRect();
+  const x = e.clientX - canvasRect.left - dragOffset.x;
+  const y = e.clientY - canvasRect.top - dragOffset.y;
+  
+  selectedElement.style.left = Math.max(0, Math.min(canvasRect.width - selectedElement.offsetWidth, x)) + 'px';
+  selectedElement.style.top = Math.max(0, Math.min(canvasRect.height - selectedElement.offsetHeight, y)) + 'px';
+  
+  updatePreview();
+}
+
+function stopDrag() {
+  isDragging = false;
+  document.removeEventListener('mousemove', doDrag);
+  document.removeEventListener('mouseup', stopDrag);
+}
+
+function startResize(e) {
+  e.stopPropagation();
+  isResizing = true;
+  
+  document.addEventListener('mousemove', doResize);
+  document.addEventListener('mouseup', stopResize);
+}
+
+function doResize(e) {
+  if (!isResizing || !selectedElement) return;
+  
+  const canvasRect = document.getElementById('slide-canvas').getBoundingClientRect();
+  const elementRect = selectedElement.getBoundingClientRect();
+  
+  const newWidth = e.clientX - elementRect.left;
+  const newHeight = e.clientY - elementRect.top;
+  
+  selectedElement.style.width = Math.max(100, newWidth) + 'px';
+  selectedElement.style.height = Math.max(30, newHeight) + 'px';
+  
+  updatePreview();
+}
+
+function stopResize() {
+  isResizing = false;
+  document.removeEventListener('mousemove', doResize);
+  document.removeEventListener('mouseup', stopResize);
+}
+
+// Update selected element properties when form fields change
+document.getElementById('font-size').addEventListener('input', function() {
+  if (selectedElement) {
+    selectedElement.style.fontSize = this.value + 'px';
+    updatePreview();
+  }
+});
+
+document.getElementById('text-color').addEventListener('input', function() {
+  if (selectedElement) {
+    selectedElement.style.color = this.value;
+    updatePreview();
+  }
+});
+
+document.getElementById('bg-color').addEventListener('input', function() {
+  if (selectedElement && !document.getElementById('no-background').checked) {
+    selectedElement.style.backgroundColor = this.value;
+    updatePreview();
+  }
+});
+
+document.getElementById('no-background').addEventListener('change', function() {
+  if (selectedElement) {
+    if (this.checked) {
+      selectedElement.classList.add('no-background');
+      selectedElement.style.backgroundColor = 'transparent';
+    } else {
+      selectedElement.classList.remove('no-background');
+      selectedElement.style.backgroundColor = document.getElementById('bg-color').value;
+    }
+    updatePreview();
+  }
+});
+
+// Canvas background color change
+document.getElementById('canvas-bg-color').addEventListener('input', function() {
+  const canvas = document.getElementById('slide-canvas');
+  canvas.style.backgroundColor = this.value;
+  updatePreview();
+});
+
+// Background image upload
+document.getElementById('bg-image-input').addEventListener('change', function() {
+  if (this.files && this.files[0]) {
+    uploadBackgroundImage(this.files[0]);
+  }
+});
+
+function clearCanvas() {
+  if (confirm('Are you sure you want to clear all text elements and remove the custom slide?')) {
+    const canvas = document.getElementById('slide-canvas');
+    canvas.innerHTML = '';
+    canvas.style.backgroundColor = '#000000';
+    canvas.style.backgroundImage = '';
+    currentBackgroundImage = null;
+    document.getElementById('canvas-bg-color').value = '#000000';
+    document.getElementById('bg-image-input').value = '';
+    clearSelection();
+    updatePreview();
+    
+    // Clear the saved slide
+    clearCustomSlide();
+  }
+}
+
+async function clearCustomSlide() {
+  try {
+    const response = await fetch('/api/custom-slide', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showStatus('slide-status', 'Custom slide cleared successfully!', 'success');
+    } else {
+      showStatus('slide-status', `Error clearing slide: ${result.error}`, 'error');
+    }
+  } catch (error) {
+    console.error('Error clearing slide:', error);
+    showStatus('slide-status', `Error clearing slide: ${error.message}`, 'error');
+  }
+}
+
+async function uploadBackgroundImage(file) {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showStatus('slide-status', 'Uploading background image...', 'success');
+    
+    const response = await fetch('/api/upload-background', {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      currentBackgroundImage = `./pictures/main_slide_bg/${result.filename}`;
+      applyBackgroundImage(currentBackgroundImage);
+      showStatus('slide-status', 'Background image uploaded successfully!', 'success');
+    } else {
+      showStatus('slide-status', `Error: ${result.error}`, 'error');
+    }
+  } catch (error) {
+    showStatus('slide-status', `Error uploading background: ${error.message}`, 'error');
+  }
+}
+
+function applyBackgroundImage(imageUrl) {
+  const canvas = document.getElementById('slide-canvas');
+  canvas.style.backgroundImage = `url(${imageUrl})`;
+  canvas.style.backgroundSize = 'cover';
+  canvas.style.backgroundPosition = 'center';
+  canvas.style.backgroundRepeat = 'no-repeat';
+  updatePreview();
+}
+
+function removeBgImage() {
+  if (confirm('Are you sure you want to remove the background image?')) {
+    const canvas = document.getElementById('slide-canvas');
+    canvas.style.backgroundImage = '';
+    currentBackgroundImage = null;
+    document.getElementById('bg-image-input').value = '';
+    updatePreview();
+  }
+}
+
+function updatePreview() {
+  const canvas = document.getElementById('slide-canvas');
+  const preview = document.getElementById('preview-canvas');
+  
+  // Copy background styling
+  preview.style.backgroundColor = canvas.style.backgroundColor;
+  preview.style.backgroundImage = canvas.style.backgroundImage;
+  preview.style.backgroundSize = 'cover';
+  preview.style.backgroundPosition = 'center';
+  preview.style.backgroundRepeat = 'no-repeat';
+  
+  // Clone canvas content to preview
+  preview.innerHTML = canvas.innerHTML;
+  
+  // Remove selection classes and event listeners from preview
+  const previewElements = preview.querySelectorAll('.text-element');
+  previewElements.forEach(el => {
+    el.classList.remove('selected');
+    el.contentEditable = false;
+    el.style.transform = 'scale(1)'; // Ensure preview elements are not scaled
+  });
+}
+
+async function saveCustomSlide() {
+  const canvas = document.getElementById('slide-canvas');
+  const elements = Array.from(canvas.children).map(el => {
+    // Check if element has no-background class
+    const hasNoBackground = el.classList.contains('no-background');
+    
+    return {
+      id: el.id,
+      text: el.innerText || el.textContent,
+      left: el.style.left,
+      top: el.style.top,
+      width: el.style.width,
+      height: el.style.height,
+      fontSize: el.style.fontSize,
+      color: el.style.color,
+      backgroundColor: hasNoBackground ? 'transparent' : el.style.backgroundColor,
+      hasNoBackground: hasNoBackground
+    };
+  });
+  
+  const slideData = {
+    elements: elements,
+    backgroundColor: canvas.style.backgroundColor || '#000000',
+    backgroundImage: currentBackgroundImage
+  };
+  
+  try {
+    const response = await fetch('/api/custom-slide', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(slideData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showStatus('slide-status', 'Custom slide saved successfully!', 'success');
+    } else {
+      showStatus('slide-status', `Error: ${result.error}`, 'error');
+    }
+  } catch (error) {
+    showStatus('slide-status', `Error saving slide: ${error.message}`, 'error');
+  }
+}
+
+async function loadCustomSlide() {
+  try {
+    const response = await fetch('/api/custom-slide');
+    if (response.ok) {
+      const data = await response.json();
+      
+      const canvas = document.getElementById('slide-canvas');
+      canvas.innerHTML = '';
+      
+      // Set background color
+      if (data.backgroundColor) {
+        canvas.style.backgroundColor = data.backgroundColor;
+        document.getElementById('canvas-bg-color').value = data.backgroundColor;
+      }
+      
+      // Set background image
+      if (data.backgroundImage) {
+        currentBackgroundImage = data.backgroundImage;
+        applyBackgroundImage(data.backgroundImage);
+      } else {
+        canvas.style.backgroundImage = '';
+        currentBackgroundImage = null;
+      }
+      
+      // Load text elements
+      if (data.elements && data.elements.length > 0) {
+        data.elements.forEach(elemData => {
+          const textElement = document.createElement('div');
+          textElement.className = 'text-element';
+          textElement.id = elemData.id;
+          textElement.contentEditable = true;
+          textElement.innerText = elemData.text;
+          
+          // Apply styles
+          if (elemData.left) textElement.style.left = elemData.left;
+          if (elemData.top) textElement.style.top = elemData.top;
+          if (elemData.width) textElement.style.width = elemData.width;
+          if (elemData.height) textElement.style.height = elemData.height;
+          if (elemData.fontSize) textElement.style.fontSize = elemData.fontSize;
+          if (elemData.color) textElement.style.color = elemData.color;
+          
+          // Handle background - check if it's transparent/no background
+          if (elemData.backgroundColor === 'transparent' || !elemData.backgroundColor) {
+            textElement.classList.add('no-background');
+            textElement.style.backgroundColor = 'transparent';
+          } else {
+            textElement.style.backgroundColor = elemData.backgroundColor;
+          }
+          
+          // Add resize handle
+          const resizeHandle = document.createElement('div');
+          resizeHandle.className = 'resize-handle';
+          textElement.appendChild(resizeHandle);
+          
+          // Add event listeners
+          textElement.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectElement(textElement);
+          });
+          
+          textElement.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            enterEditMode(textElement);
+          });
+          
+          textElement.addEventListener('keydown', handleTextKeyDown);
+          textElement.addEventListener('blur', exitEditMode);
+          textElement.addEventListener('mousedown', startDrag);
+          resizeHandle.addEventListener('mousedown', startResize);
+          
+          canvas.appendChild(textElement);
+        });
+      }
+      
+      updatePreview();
+    }
+  } catch (error) {
+    console.error('Error loading custom slide:', error);
+  }
+}
+
+// Helper function to convert RGB to hex
+function rgbToHex(rgb) {
+  if (!rgb) return '#000000';
+  
+  const result = rgb.match(/\d+/g);
+  if (!result || result.length < 3) return '#000000';
+  
+  return '#' + result.slice(0, 3).map(x => {
+    const hex = parseInt(x).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+}
+
+// Add keyboard shortcut for deleting selected element
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Delete' && selectedElement) {
+    selectedElement.remove();
+    clearSelection();
+    updatePreview();
+  }
+});
 </script>
 
 </body>

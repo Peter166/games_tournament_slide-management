@@ -78,6 +78,8 @@ class PictureHandler(http.server.SimpleHTTPRequestHandler):
             self.send_countdown_json()
         elif self.path == '/api/pictures':
             self.send_pictures_json()
+        elif self.path == '/api/custom-slide':
+            self.send_custom_slide_json()
         elif self.path == '/admin':
             self.serve_admin_page()
         elif self.path == '/favicon.ico':
@@ -90,6 +92,10 @@ class PictureHandler(http.server.SimpleHTTPRequestHandler):
             self.update_countdown()
         elif self.path == '/api/upload':
             self.handle_file_upload()
+        elif self.path == '/api/upload-background':
+            self.handle_background_upload()
+        elif self.path == '/api/custom-slide':
+            self.save_custom_slide()
         else:
             self.send_error(404, "Not Found")
     
@@ -97,6 +103,8 @@ class PictureHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith('/api/delete/'):
             filename = urllib.parse.unquote(self.path[12:])  # Remove '/api/delete/'
             self.delete_picture(filename)
+        elif self.path == '/api/custom-slide':
+            self.delete_custom_slide()
         else:
             self.send_error(404, "Not Found")
     
@@ -124,18 +132,23 @@ class PictureHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(500, f"Error serving admin page: {e}")
     
     def send_pictures_json(self):
-        """Send JSON list of available pictures"""
+        """Send list of available pictures as JSON"""
         pictures_dir = Path('pictures')
-        picture_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
         
+        if not pictures_dir.exists():
+            pictures_dir.mkdir()
+        
+        # Get all image files, excluding background images and main_slide_bg directory
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
         pictures = []
-        if pictures_dir.exists():
-            for file in pictures_dir.iterdir():
-                if file.is_file() and file.suffix.lower() in picture_extensions:
-                    pictures.append(f'pictures/{file.name}')
         
-        # Sort pictures naturally
-        pictures.sort()
+        for file_path in pictures_dir.iterdir():
+            if (file_path.is_file() and 
+                file_path.suffix.lower() in image_extensions and
+                not file_path.name.startswith('background_main_slide')):
+                pictures.append(file_path.name)
+        
+        pictures.sort()  # Sort alphabetically
         
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
@@ -143,7 +156,7 @@ class PictureHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         
         response = json.dumps({
-            'pictures': pictures,
+            'pictures': [f'./pictures/{pic}' for pic in pictures],
             'count': len(pictures)
         })
         self.wfile.write(response.encode())
@@ -356,6 +369,205 @@ class PictureHandler(http.server.SimpleHTTPRequestHandler):
             response = json.dumps({
                 'success': True,
                 'message': f'File {filename} deleted successfully'
+            })
+            self.wfile.write(response.encode())
+            
+        except Exception as e:
+            self.send_response(400)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = json.dumps({
+                'success': False,
+                'error': str(e)
+            })
+            self.wfile.write(response.encode())
+    
+    def handle_background_upload(self):
+        """Handle background image upload for custom slide"""
+        try:
+            # Parse the multipart form data
+            content_type = self.headers['Content-Type']
+            if not content_type.startswith('multipart/form-data'):
+                raise ValueError("Expected multipart/form-data")
+            
+            # Create directories if they don't exist
+            pictures_dir = Path('pictures')
+            bg_dir = pictures_dir / 'main_slide_bg'
+            pictures_dir.mkdir(exist_ok=True)
+            bg_dir.mkdir(exist_ok=True)
+            
+            # Parse the boundary
+            boundary = content_type.split('boundary=')[1].encode()
+            
+            # Read the content
+            content_length = int(self.headers['Content-Length'])
+            data = self.rfile.read(content_length)
+            
+            # Parse multipart data manually (simple version)
+            parts = data.split(b'--' + boundary)
+            
+            for part in parts:
+                if b'Content-Disposition: form-data' in part and b'filename=' in part:
+                    # Extract filename
+                    lines = part.split(b'\r\n')
+                    for line in lines:
+                        if b'Content-Disposition' in line:
+                            filename_match = re.search(b'filename="([^"]*)"', line)
+                            if filename_match:
+                                original_filename = filename_match.group(1).decode('utf-8')
+                                
+                                # Get file extension
+                                file_ext = Path(original_filename).suffix.lower()
+                                
+                                # Create new filename
+                                new_filename = f'background_main_slide{file_ext}'
+                                
+                                # Find the file content (after double CRLF)
+                                content_start = part.find(b'\r\n\r\n') + 4
+                                if content_start > 3:
+                                    file_content = part[content_start:]
+                                    
+                                    # Remove any trailing boundary markers
+                                    if file_content.endswith(b'\r\n'):
+                                        file_content = file_content[:-2]
+                                    
+                                    # Save file in main_slide_bg subdirectory
+                                    file_path = bg_dir / new_filename
+                                    with open(file_path, 'wb') as f:
+                                        f.write(file_content)
+                                    
+                                    self.send_response(200)
+                                    self.send_header('Content-type', 'application/json')
+                                    self.send_header('Access-Control-Allow-Origin', '*')
+                                    self.end_headers()
+                                    
+                                    response = json.dumps({
+                                        'success': True,
+                                        'filename': new_filename,
+                                        'message': f'Background image uploaded successfully as {new_filename}'
+                                    })
+                                    self.wfile.write(response.encode())
+                                    return
+            
+            raise ValueError("No valid file found in upload")
+            
+        except Exception as e:
+            self.send_response(400)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = json.dumps({
+                'success': False,
+                'error': str(e)
+            })
+            self.wfile.write(response.encode())
+    
+    def send_custom_slide_json(self):
+        """Send custom slide data"""
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        
+        # Check for background image in main_slide_bg directory
+        pictures_dir = Path('pictures')
+        bg_dir = pictures_dir / 'main_slide_bg'
+        background_image = None
+        if bg_dir.exists():
+            for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']:
+                bg_file = bg_dir / f'background_main_slide{ext}'
+                if bg_file.exists():
+                    background_image = f'./pictures/main_slide_bg/{bg_file.name}'
+                    break
+        
+        custom_slide_file = Path('custom_slide.json')
+        if custom_slide_file.exists():
+            try:
+                with open(custom_slide_file, 'r') as f:
+                    slide_data = json.load(f)
+                slide_data['backgroundImage'] = background_image
+                self.wfile.write(json.dumps(slide_data).encode())
+                return
+            except Exception as e:
+                print(f"Error reading custom slide: {e}")
+        
+        # Return empty slide data if file doesn't exist or has errors
+        empty_data = {
+            'elements': [], 
+            'backgroundColor': '#f9f9f9',
+            'backgroundImage': background_image
+        }
+        self.wfile.write(json.dumps(empty_data).encode())
+    
+    def save_custom_slide(self):
+        """Save custom slide data"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            slide_data = json.loads(post_data.decode('utf-8'))
+            
+            # Save to file
+            with open('custom_slide.json', 'w') as f:
+                json.dump(slide_data, f, indent=2)
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = json.dumps({
+                'success': True,
+                'message': 'Custom slide saved successfully'
+            })
+            self.wfile.write(response.encode())
+            
+        except Exception as e:
+            self.send_response(400)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = json.dumps({
+                'success': False,
+                'error': str(e)
+            })
+            self.wfile.write(response.encode())
+    
+    def delete_custom_slide(self):
+        """Delete custom slide data and background image"""
+        try:
+            # Delete custom slide JSON file
+            custom_slide_file = Path('custom_slide.json')
+            if custom_slide_file.exists():
+                custom_slide_file.unlink()
+            
+            # Delete background image if it exists in main_slide_bg directory
+            pictures_dir = Path('pictures')
+            bg_dir = pictures_dir / 'main_slide_bg'
+            if bg_dir.exists():
+                for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']:
+                    bg_file = bg_dir / f'background_main_slide{ext}'
+                    if bg_file.exists():
+                        bg_file.unlink()
+                        break
+                
+                # Remove the directory if it's empty
+                try:
+                    bg_dir.rmdir()
+                except OSError:
+                    pass  # Directory not empty or doesn't exist
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = json.dumps({
+                'success': True,
+                'message': 'Custom slide deleted successfully'
             })
             self.wfile.write(response.encode())
             
