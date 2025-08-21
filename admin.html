@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournament Admin Panel</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+  }
+  
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+  
+  .header {
+    background: #2c3e50;
+    color: white;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .content {
+    padding: 30px;
+  }
+  
+  .section {
+    margin-bottom: 40px;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f9f9f9;
+  }
+  
+  .section h2 {
+    color: #2c3e50;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+  }
+  
+  input[type="text"], input[type="time"], input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+  
+  input[type="text"]:focus, input[type="time"]:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: #667eea;
+  }
+  
+  .button {
+    background: #667eea;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .button:hover {
+    background: #5a6fd8;
+  }
+  
+  .button.success {
+    background: #27ae60;
+  }
+  
+  .button.danger {
+    background: #e74c3c;
+  }
+  
+  .drop-zone {
+    border: 3px dashed #ccc;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: pointer;
+    background: white;
+  }
+  
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: #667eea;
+    background: #f0f4ff;
+  }
+  
+  .file-input {
+    display: none;
+  }
+  
+  .current-pictures {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+  }
+  
+  .picture-item {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .picture-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+  }
+  
+  .picture-item .delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .status-message {
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    display: none;
+  }
+  
+  .status-message.success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+  }
+  
+  .status-message.error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+  }
+  
+  .current-settings {
+    background: #e8f4fd;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+  }
+  
+  .toggle-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .toggle-btn {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    background: white;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  
+  .toggle-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🏆 Tournament Admin Panel</h1>
+    <p>Manage countdown settings and slideshow pictures</p>
+  </div>
+  
+  <div class="content">
+    <!-- Countdown Settings Section -->
+    <div class="section">
+      <h2>⏰ Countdown Settings</h2>
+      
+      <div class="current-settings" id="current-settings">
+        Loading current settings...
+      </div>
+      
+      <form id="countdown-form">
+        <div class="form-group">
+          <label for="countdown-text">Countdown Text:</label>
+          <input type="text" id="countdown-text" placeholder="e.g., Round 1 finishes in" required>
+        </div>
+        
+        <div class="toggle-group">
+          <div class="toggle-btn active" id="time-mode-btn">Set Target Time</div>
+          <div class="toggle-btn" id="duration-mode-btn">Set Duration</div>
+        </div>
+        
+        <div class="form-group" id="time-group">
+          <label for="target-time">Target Time (24-hour format):</label>
+          <input type="time" id="target-time">
+        </div>
+        
+        <div class="form-group" id="duration-group" style="display: none;">
+          <label for="duration">Duration (minutes):</label>
+          <input type="number" id="duration" min="1" placeholder="e.g., 30">
+        </div>
+        
+        <button type="submit" class="button">Update Countdown</button>
+      </form>
+      
+      <div class="status-message" id="countdown-status"></div>
+    </div>
+    
+    <!-- Picture Upload Section -->
+    <div class="section">
+      <h2>🖼️ Picture Management</h2>
+      
+      <div class="drop-zone" id="drop-zone">
+        <p>📁 Drop pictures here or click to select</p>
+        <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+          Supported formats: JPG, PNG, GIF, WebP
+        </p>
+      </div>
+      
+      <input type="file" id="file-input" class="file-input" multiple accept="image/*">
+      
+      <div class="status-message" id="upload-status"></div>
+      
+      <h3 style="margin-top: 30px; margin-bottom: 15px;">Current Pictures:</h3>
+      <div class="current-pictures" id="current-pictures">
+        Loading pictures...
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global variables
+let currentMode = 'time'; // 'time' or 'duration'
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', function() {
+  loadCurrentSettings();
+  loadCurrentPictures();
+  setupEventListeners();
+});
+
+function setupEventListeners() {
+  // Form submission
+  document.getElementById('countdown-form').addEventListener('submit', updateCountdown);
+  
+  // Toggle between time and duration modes
+  document.getElementById('time-mode-btn').addEventListener('click', (e) => {
+    console.log('Time mode button clicked');
+    e.preventDefault();
+    setMode('time');
+  });
+  document.getElementById('duration-mode-btn').addEventListener('click', (e) => {
+    console.log('Duration mode button clicked');
+    e.preventDefault();
+    setMode('duration');
+  });
+  
+  // File upload
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+  
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', handleDragOver);
+  dropZone.addEventListener('drop', handleDrop);
+  dropZone.addEventListener('dragenter', e => e.preventDefault());
+  dropZone.addEventListener('dragleave', handleDragLeave);
+  
+  fileInput.addEventListener('change', handleFileSelect);
+}
+
+function setMode(mode) {
+  console.log(`Setting mode to: ${mode}`);
+  currentMode = mode;
+  
+  // Update button styles
+  document.getElementById('time-mode-btn').classList.toggle('active', mode === 'time');
+  document.getElementById('duration-mode-btn').classList.toggle('active', mode === 'duration');
+  
+  // Show/hide appropriate form groups
+  document.getElementById('time-group').style.display = mode === 'time' ? 'block' : 'none';
+  document.getElementById('duration-group').style.display = mode === 'duration' ? 'block' : 'none';
+  
+  console.log(`Mode set to ${mode}, time-group display: ${document.getElementById('time-group').style.display}, duration-group display: ${document.getElementById('duration-group').style.display}`);
+}
+
+async function loadCurrentSettings() {
+  try {
+    const response = await fetch('/api/countdown');
+    if (response.ok) {
+      const data = await response.json();
+      
+      const settingsDiv = document.getElementById('current-settings');
+      settingsDiv.innerHTML = `
+        <strong>Current Settings:</strong><br>
+        Text: "${data.text}"<br>
+        Duration: ${Math.floor(data.duration / 60)}:${String(data.duration % 60).padStart(2, '0')}<br>
+        ${data.target_time ? `Target Time: ${data.target_time}` : 'No target time set'}
+      `;
+      
+      // Pre-fill form
+      document.getElementById('countdown-text').value = data.text;
+      if (data.target_time) {
+        document.getElementById('target-time').value = data.target_time;
+        setMode('time');
+      } else {
+        document.getElementById('duration').value = Math.floor(data.duration / 60);
+        setMode('duration');
+      }
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  }
+}
+
+async function updateCountdown(e) {
+  e.preventDefault();
+  console.log('Form submitted, current mode:', currentMode);
+  
+  const text = document.getElementById('countdown-text').value;
+  const payload = { text };
+  
+  if (currentMode === 'time') {
+    const targetTime = document.getElementById('target-time').value;
+    console.log('Target time value:', targetTime);
+    if (targetTime) {
+      payload.target_time = targetTime;
+    }
+  } else {
+    const duration = parseInt(document.getElementById('duration').value) * 60; // Convert to seconds
+    console.log('Duration value:', duration);
+    if (duration) {
+      payload.duration = duration;
+    }
+  }
+  
+  console.log('Sending payload:', payload);
+  
+  try {
+    const response = await fetch('/api/countdown', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+    console.log('Server response:', result);
+    
+    if (result.success) {
+      showStatus('countdown-status', 'Countdown updated successfully!', 'success');
+      loadCurrentSettings();
+    } else {
+      showStatus('countdown-status', `Error: ${result.error}`, 'error');
+    }
+  } catch (error) {
+    console.log('Fetch error:', error);
+    showStatus('countdown-status', `Error: ${error.message}`, 'error');
+  }
+}
+
+async function loadCurrentPictures() {
+  try {
+    const response = await fetch('/api/pictures');
+    if (response.ok) {
+      const data = await response.json();
+      displayPictures(data.pictures);
+    }
+  } catch (error) {
+    console.error('Error loading pictures:', error);
+  }
+}
+
+function displayPictures(pictures) {
+  const container = document.getElementById('current-pictures');
+  
+  if (pictures.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: #666;">No pictures uploaded yet.</p>';
+    return;
+  }
+  
+  container.innerHTML = pictures.map(picture => `
+    <div class="picture-item">
+      <img src="${picture}" alt="Slide picture">
+      <button class="delete-btn" onclick="deletePicture('${picture.split('/').pop()}')">&times;</button>
+    </div>
+  `).join('');
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  
+  const files = Array.from(e.dataTransfer.files);
+  uploadFiles(files);
+}
+
+function handleFileSelect(e) {
+  const files = Array.from(e.target.files);
+  uploadFiles(files);
+}
+
+async function uploadFiles(files) {
+  const imageFiles = files.filter(file => file.type.startsWith('image/'));
+  
+  if (imageFiles.length === 0) {
+    showStatus('upload-status', 'Please select valid image files.', 'error');
+    return;
+  }
+  
+  showStatus('upload-status', `Uploading ${imageFiles.length} file(s)...`, 'success');
+  
+  for (const file of imageFiles) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        showStatus('upload-status', `Error uploading ${file.name}: ${result.error}`, 'error');
+        return;
+      }
+    } catch (error) {
+      showStatus('upload-status', `Error uploading ${file.name}: ${error.message}`, 'error');
+      return;
+    }
+  }
+  
+  showStatus('upload-status', `Successfully uploaded ${imageFiles.length} file(s)!`, 'success');
+  loadCurrentPictures();
+  
+  // Clear file input
+  document.getElementById('file-input').value = '';
+}
+
+async function deletePicture(filename) {
+  if (!confirm(`Are you sure you want to delete ${filename}?`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/delete/${encodeURIComponent(filename)}`, {
+      method: 'DELETE'
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showStatus('upload-status', `Deleted ${filename} successfully!`, 'success');
+      loadCurrentPictures();
+    } else {
+      showStatus('upload-status', `Error deleting ${filename}: ${result.error}`, 'error');
+    }
+  } catch (error) {
+    showStatus('upload-status', `Error deleting ${filename}: ${error.message}`, 'error');
+  }
+}
+
+function showStatus(elementId, message, type) {
+  const statusElement = document.getElementById(elementId);
+  statusElement.textContent = message;
+  statusElement.className = `status-message ${type}`;
+  statusElement.style.display = 'block';
+  
+  // Hide after 5 seconds
+  setTimeout(() => {
+    statusElement.style.display = 'none';
+  }, 5000);
+}
+</script>
+
+</body>
+</html>

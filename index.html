@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotating Slideshow with Countdown</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #fff;
+  }
+  .slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em;
+    text-align: center;
+    padding: 120px 20px 20px 20px; /* Increased top padding to avoid countdown overlap */
+    box-sizing: border-box;
+    opacity: 0;
+    transition: opacity 0.8s ease-in-out;
+  }
+  .slide.active {
+    opacity: 1;
+  }
+  .slide img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+  }
+  #slide1 iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  #countdown {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.5em;
+    background: rgba(0,0,0,0.8);
+    padding: 20px 40px;
+    border-radius: 8px;
+    z-index: 9999;
+    color: #fff;
+    font-weight: bold;
+    border: 2px solid #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    display: none; /* Hidden by default until time is loaded */
+  }
+</style>
+</head>
+<body>
+
+<div id="countdown">Round 1 finishes in 05:00</div>
+
+<!-- Dynamic slides will be inserted here -->
+<div id="slides-container"></div>
+
+<script>
+const slidesContainer = document.getElementById('slides-container');
+const countdownEl = document.getElementById('countdown');
+let currentSlide = 0;
+let roundDuration = 5 * 60; // 5 minutes countdown
+let countdownText = "Round 1 finishes in";
+let slides = [];
+let slideInterval;
+let countdownStartTime = Date.now();
+let isTimeBasedCountdown = false;
+let targetTime = null;
+
+// Fetch initial countdown settings
+async function loadCountdownSettings() {
+  try {
+    const response = await fetch('/api/countdown');
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Check if settings actually changed
+      const settingsChanged = countdownText !== data.text || 
+                             roundDuration !== data.duration ||
+                             (data.target_time !== targetTime);
+      
+      countdownText = data.text;
+      roundDuration = data.duration;
+      
+      // Show the countdown now that we have valid data
+      countdownEl.style.display = 'block';
+      
+      // Check if this is a time-based countdown
+      if (data.target_time) {
+        isTimeBasedCountdown = true;
+        targetTime = data.target_time;
+        console.log(`Time-based countdown updated: ${countdownText} until ${targetTime}`);
+      } else {
+        isTimeBasedCountdown = false;
+        targetTime = null;
+        countdownStartTime = Date.now(); // Reset countdown when settings change
+        console.log(`Duration-based countdown updated: ${countdownText} (${roundDuration}s)`);
+      }
+      
+      // If settings changed, immediately update the countdown display
+      if (settingsChanged) {
+        updateCountdownDisplay();
+      }
+      
+      return true; // Successfully loaded
+    }
+  } catch (error) {
+    console.log('API not available for countdown');
+  }
+  return false; // Failed to load
+}
+
+// List of picture filenames to check - fallback method
+const pictureNames = [
+  'picture1.jpg', 'picture2.jpg', 'picture3.jpg', 'picture4.jpg', 'picture5.jpg',
+  'picture6.jpg', 'picture7.jpg', 'picture8.jpg', 'picture9.jpg', 'picture10.jpg'
+];
+
+async function checkImageExists(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
+}
+
+async function loadAvailablePictures() {
+  // Try to use API first (if server is running)
+  try {
+    const response = await fetch('/api/pictures');
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`Found ${data.count} pictures via API`);
+      return data.pictures;
+    }
+  } catch (error) {
+    console.log('API not available, using fallback method');
+  }
+  
+  // Fallback: check predefined list
+  const availablePictures = [];
+  for (const pictureName of pictureNames) {
+    const imagePath = `./pictures/${pictureName}`;
+    const exists = await checkImageExists(imagePath);
+    if (exists) {
+      availablePictures.push(imagePath);
+    }
+  }
+  
+  console.log(`Found ${availablePictures.length} pictures via fallback`);
+  return availablePictures;
+}
+
+function createSlide(imagePath, index) {
+  const slide = document.createElement('div');
+  slide.className = 'slide';
+  slide.id = `slide${index}`;
+  
+  slide.innerHTML = `
+    <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+      <img src="${imagePath}" alt="Slide Image" style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;">
+    </div>
+  `;
+  return slide;
+}
+
+function createWebSlide(url, index) {
+  const slide = document.createElement('div');
+  slide.className = 'slide';
+  slide.id = `slide${index}`;
+  
+  slide.innerHTML = `
+    <div style="width: 100%; height: 100%; position: relative;">
+      <iframe 
+        src="${url}" 
+        style="width: 100%; height: 100%; border: none; background: white;"
+        sandbox="allow-scripts allow-same-origin allow-forms"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      </iframe>
+      <div style="display: none; width: 100%; height: 100%; justify-content: center; align-items: center; background: #222; color: white; text-align: center;">
+        <div>
+          <h2>Website Content</h2>
+          <p>Unable to load ${url}</p>
+          <p style="font-size: 0.8em; opacity: 0.7;">Site may not allow embedding</p>
+        </div>
+      </div>
+    </div>
+  `;
+  return slide;
+}
+
+async function updateSlides() {
+  console.log('Checking for new pictures...');
+  const availablePictures = await loadAvailablePictures();
+  
+  // Check if slides have changed
+  const currentSrcs = slides.map(slide => slide.querySelector('img').src);
+  const newSrcs = availablePictures.map(path => new URL(path, window.location.href).href);
+  
+  const hasChanged = currentSrcs.length !== newSrcs.length || 
+                    currentSrcs.some((src, i) => src !== newSrcs[i]);
+  
+  if (hasChanged) {
+    console.log('Pictures changed, updating slides...');
+    
+    // Clear existing slides
+    slidesContainer.innerHTML = '';
+    slides = [];
+    
+    // Create new slides
+    availablePictures.forEach((imagePath, index) => {
+      const slide = createSlide(imagePath, index);
+      slidesContainer.appendChild(slide);
+      slides.push(slide);
+    });
+    
+    // Reset slide show
+    currentSlide = 0;
+    if (slides.length > 0) {
+      startSlideshow();
+    }
+  }
+}
+
+function showSlide(index) {
+  console.log(`Showing slide ${index} of ${slides.length} total slides`);
+  slides.forEach((slide, i) => {
+    if (i === index) {
+      slide.classList.add('active');
+      console.log(`Activated slide ${i}:`, slide.id);
+    } else {
+      slide.classList.remove('active');
+    }
+  });
+}
+
+function nextSlide() {
+  if (slides.length === 0) return;
+  currentSlide = (currentSlide + 1) % slides.length;
+  showSlide(currentSlide);
+}
+
+function startSlideshow() {
+  if (slideInterval) clearInterval(slideInterval);
+  if (slides.length > 0) {
+    showSlide(currentSlide);
+    slideInterval = setInterval(nextSlide, 8000); // 8 seconds per slide to give more time for web content
+  }
+}
+
+// Countdown timer functions
+function updateCountdownDisplay() {
+  let remaining;
+  
+  if (isTimeBasedCountdown) {
+    // For time-based countdown, use the duration from server (which is updated every 5 seconds)
+    remaining = Math.max(0, roundDuration);
+  } else {
+    // Traditional duration-based countdown
+    const elapsed = Math.floor((Date.now() - countdownStartTime) / 1000);
+    remaining = roundDuration - elapsed;
+    
+    // If countdown has expired, reset it
+    if (remaining <= 0) {
+      // Calculate how many full cycles have passed and adjust start time
+      const cycles = Math.floor(Math.abs(remaining) / roundDuration) + 1;
+      countdownStartTime = Date.now() - ((Math.abs(remaining) % roundDuration) * 1000);
+      remaining = roundDuration - Math.floor((Date.now() - countdownStartTime) / 1000);
+    }
+  }
+  
+  remaining = Math.max(0, remaining);
+  
+  // Format time based on duration (Updated for hours/minutes display)
+  let timeDisplay;
+  if (remaining >= 3600) {
+    // Show hours and minutes for durations >= 1 hour
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    timeDisplay = `${hours}h:${String(minutes).padStart(2, '0')}m`;
+  } else if (remaining >= 60) {
+    // Show minutes and seconds for durations >= 1 minute but < 1 hour
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    timeDisplay = `${minutes}:${String(seconds).padStart(2, '0')}`;
+  } else {
+    // Show just seconds for durations < 1 minute
+    timeDisplay = `00:${String(remaining).padStart(2, '0')}`;
+  }
+  
+  countdownEl.textContent = `${countdownText} ${timeDisplay}`;
+}
+
+function startCountdown() {
+  setInterval(updateCountdownDisplay, 1000);
+}
+
+// Initialize
+async function init() {
+  const countdownLoaded = await loadCountdownSettings();
+  
+  // Force initial slide creation
+  console.log('Initializing slides...');
+  const availablePictures = await loadAvailablePictures();
+  console.log('Initial pictures found:', availablePictures);
+  
+  // Clear and create slides
+  slidesContainer.innerHTML = '';
+  slides = [];
+  
+  // Create image slides
+  availablePictures.forEach((imagePath, index) => {
+    const slide = createSlide(imagePath, index);
+    slidesContainer.appendChild(slide);
+    slides.push(slide);
+    console.log(`Initial slide ${index}: ${imagePath}`);
+  });
+  
+  // Add website slide at the end
+  // if (availablePictures.length > 0) {
+  //   const webSlide = createWebSlide('https://asoiaf-stats.com', availablePictures.length);
+  //   slidesContainer.appendChild(webSlide);
+  //   slides.push(webSlide);
+  //   console.log(`Initial web slide ${availablePictures.length}: asoiaf-stats.com`);
+  // }
+  
+  console.log(`Total slides created: ${slides.length}`);
+  
+  // Start slideshow
+  if (slides.length > 0) {
+    startSlideshow();
+  }
+  
+  // Only start countdown if we successfully loaded settings from server
+  if (countdownLoaded) {
+    startCountdown();
+  }
+  
+  // Check for new pictures every 15 seconds
+  setInterval(updateSlides, 15000);
+  
+  // Check for countdown updates every 1 second for time-based countdowns
+  setInterval(async () => {
+    if (isTimeBasedCountdown) {
+      await loadCountdownSettings();
+    }
+  }, 1000);
+  
+  // Check for settings changes every 2 seconds for all countdowns (faster updates)
+  setInterval(async () => {
+    const loaded = await loadCountdownSettings();
+    // If countdown wasn't running before but now we have data, start it
+    if (loaded && countdownEl.style.display === 'none') {
+      startCountdown();
+    }
+  }, 2000);
+}
+
+// Start the application
+init();
+</script>
+
+</body>
+</html>
